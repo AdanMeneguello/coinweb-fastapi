@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CoinWeb</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+    button { padding: 10px 14px; border-radius: 10px; border: 1px solid #333; background: #fff; cursor: pointer; }
+    pre { background: #f6f6f6; padding: 12px; border-radius: 10px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <h1>Conversor (CoinMarketCap)</h1>
+
+  <div class="card">
+    <button id="btn">Buscar cotações</button>
+    <p id="status"></p>
+    <pre id="out">Clique no botão…</pre>
+  </div>
+
+  <script>
+    const btn = document.getElementById("btn");
+    const out = document.getElementById("out");
+    const status = document.getElementById("status");
+
+    btn.addEventListener("click", async () => {
+      status.textContent = "Buscando…";
+      out.textContent = "";
+      try {
+        const res = await fetch("/api/cotacoes");
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        status.textContent = "OK";
+        out.textContent =
+          `Dólar (USD->BRL): R$ ${data.dolar_brl.toFixed(2)}\n` +
+          `BTC (BRL): R$ ${data.bitcoin_brl.toFixed(2)}\n` +
+          `BTC (USD): US$ ${data.bitcoin_usd.toFixed(2)}\n`;
+      } catch (e) {
+        status.textContent = "Erro: " + e.message;
+      }
+    });
+  </script>
+</body>
+</html>
