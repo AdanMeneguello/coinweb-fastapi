@@ -5,42 +5,253 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>CoinWeb</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
-    button { padding: 10px 14px; border-radius: 10px; border: 1px solid #333; background: #fff; cursor: pointer; }
-    pre { background: #f6f6f6; padding: 12px; border-radius: 10px; overflow:auto; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 760px;
+      margin: 24px auto;
+      padding: 0 16px; 
+      background: linear-gradient(135deg, #0c0c00 0%, #050500 100%);
+    }
+
+    body h1{
+      color: #dbcf1e;
+    }
+
+    .muted {
+      color:#e7df71;
+      text-decoration: solid;
+    }
+    
+    .card {
+      border: 1px solid #dfd00a;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
+    }
+    
+    label {
+      display:block;
+      margin: 10px 0 6px;
+      font-weight: 600;
+      color: #e7df71;
+    }
+    
+    select { 
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #bbb;
+    }
+
+    input {
+      width: 95%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #bbb;
+    }
+    
+    .row {
+      display: grid; 
+      grid-template-columns: 1fr 1fr;
+      gap: 12px; 
+    }
+    
+    button {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid #d8f007;
+      background: #bee706;
+      cursor: pointer;
+    }
+    
+    .actions {
+      display:flex;
+      gap:10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    
+    .ok {
+      color: #0a7b0a;
+    }
+    
+    .err {
+      color: #b00020;
+    }
+    
+    pre {
+      background: #F6F6F6;
+      padding: 12px;
+      border-radius: 10px;
+      overflow:auto; 
+    }
   </style>
 </head>
 <body>
-  <h1>Conversor (CoinMarketCap)</h1>
+  <h1>Conversor de Moeda</h1>
+  <p class="muted">Dólar - Bitcoin - Reais (CoinMarketCap)</p>
 
   <div class="card">
-    <button id="btn">Buscar cotações</button>
-    <p id="status"></p>
-    <pre id="out">Clique no botão…</pre>
+    <div class="actions">
+      <button id="btnQuotes">Atualizar cotações</button>
+    </div>
+    <p id="quoteStatus" class="muted">Clique em “Atualizar cotações”.</p>
+    <pre id="quotesOut">😥😥😥</pre>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="from">1ª moeda (origem)</label>
+        <select id="from">
+          <option value="">Selecione...</option>
+          <option value="r">Reais</option>
+          <option value="d">Dólar</option>
+          <option value="b">Bitcoin</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="to">2ª moeda (destino)</label>
+        <select id="to">
+          <option value="">Selecione...</option>
+          <option value="r">Reais</option>
+          <option value="d">Dólar</option>
+          <option value="b">Bitcoin</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="amount">Valor</label>
+    <input id="amount" type="number" step="any" placeholder="Ex: 100" />
+
+    <div class="actions">
+      <button id="btnConvert">Converter</button>
+      <button id="btnClear" type="button">Limpar</button>
+    </div>
+
+    <p id="msg" class="muted"></p>
+    <pre id="resultOut">—</pre>
   </div>
 
   <script>
-    const btn = document.getElementById("btn");
-    const out = document.getElementById("out");
-    const status = document.getElementById("status");
+    const btnQuotes = document.getElementById("btnQuotes");
+    const quotesOut = document.getElementById("quotesOut");
+    const quoteStatus = document.getElementById("quoteStatus");
 
-    btn.addEventListener("click", async () => {
-      status.textContent = "Buscando…";
-      out.textContent = "";
+    const fromEl = document.getElementById("from");
+    const toEl = document.getElementById("to");
+    const amountEl = document.getElementById("amount");
+
+    const btnConvert = document.getElementById("btnConvert");
+    const btnClear = document.getElementById("btnClear");
+    const msg = document.getElementById("msg");
+    const resultOut = document.getElementById("resultOut");
+
+    // Guarda as cotações (igual suas variáveis dolar_brl, bitcoin_brl, bitcoin_usd)
+    let quotes = null;
+
+    function setMsg(text, kind="muted") {
+      msg.className = kind;
+      msg.textContent = text;
+    }
+
+    function renderQuotes(q) {
+      quotesOut.textContent =
+        `Cotação Atual - Dólar: R$ ${q.dolar_brl.toFixed(2)} | ` +
+        `BTC: R$ ${q.bitcoin_brl.toFixed(2)} | ` +
+        `BTC: US$ ${q.bitcoin_usd.toFixed(2)}`;
+    }
+
+    async function loadQuotes() {
+      quoteStatus.textContent = "Buscando cotações…";
+      quoteStatus.className = "muted";
       try {
         const res = await fetch("/api/cotacoes");
         if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-        status.textContent = "OK";
-        out.textContent =
-          `Dólar (USD->BRL): R$ ${data.dolar_brl.toFixed(2)}\n` +
-          `BTC (BRL): R$ ${data.bitcoin_brl.toFixed(2)}\n` +
-          `BTC (USD): US$ ${data.bitcoin_usd.toFixed(2)}\n`;
+        quotes = await res.json();
+        quoteStatus.textContent = "Cotações atualizadas ✅";
+        quoteStatus.className = "ok";
+        renderQuotes(quotes);
       } catch (e) {
-        status.textContent = "Erro: " + e.message;
+        quoteStatus.textContent = "Erro ao buscar cotações: " + e.message;
+        quoteStatus.className = "err";
+        quotesOut.textContent = "—";
+        quotes = null;
       }
+    }
+
+    // Mesmas regras do seu Python (com as MESMAS fórmulas)
+    function convert(from, to, value, q) {
+      const dolar_brl = q.dolar_brl;
+      const bitcoin_brl = q.bitcoin_brl;
+      const bitcoin_usd = q.bitcoin_usd;
+
+      if (from === "r" && to === "d") {
+        return `US$: ${(value / dolar_brl).toFixed(2)}`;
+      } else if (from === "r" && to === "b") {
+        return `BTC: ${(value / bitcoin_brl).toFixed(6)}`;
+      } else if (from === "d" && to === "b") {
+        return `BTC: ${(value / bitcoin_usd).toFixed(8)}`;
+      } else if (from === "d" && to === "r") {
+        return `R$: ${(value * dolar_brl).toFixed(2)}`;
+      } else if (from === "b" && to === "d") {
+        return `US$: ${(value * bitcoin_usd).toFixed(2)}`;
+      } else if (from === "b" && to === "r") {
+        return `R$: ${(value * bitcoin_brl).toFixed(2)}`;
+      } else {
+        return null; // inválida ou iguais
+      }
+    }
+
+    btnQuotes.addEventListener("click", loadQuotes);
+
+    btnConvert.addEventListener("click", () => {
+      setMsg("", "muted");
+      resultOut.textContent = "—";
+
+      if (!quotes) {
+        setMsg("Primeiro clique em “Atualizar cotações”.", "err");
+        return;
+      }
+
+      const from = (fromEl.value || "").toLowerCase();
+      const to = (toEl.value || "").toLowerCase();
+      const value = Number(amountEl.value);
+
+      if (!["d","b","r"].includes(from)) {
+        setMsg("1ª moeda inválida (use d, b ou r).", "err");
+        return;
+      }
+      if (!["d","b","r"].includes(to)) {
+        setMsg("2ª moeda inválida (use d, b ou r).", "err");
+        return;
+      }
+      if (!Number.isFinite(value)) {
+        setMsg("Insira um valor numérico válido.", "err");
+        return;
+      }
+
+      const out = convert(from, to, value, quotes);
+      if (!out) {
+        setMsg("Conversão inválida ou moedas iguais.", "err");
+        return;
+      }
+
+      setMsg("Resultado:", "ok");
+      resultOut.textContent = out;
     });
+
+    btnClear.addEventListener("click", () => {
+      fromEl.value = "";
+      toEl.value = "";
+      amountEl.value = "";
+      setMsg("", "muted");
+      resultOut.textContent = "—";
+    });
+
+    // (opcional) já carrega as cotações quando abrir a página
+    loadQuotes();
   </script>
 </body>
 </html>
